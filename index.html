@@ -34,7 +34,7 @@
   .current-user-bar:hover { background: #d0f5e8; }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-  .shell { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
+  .shell { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); display: none; flex-direction: column; }
 
   /* HEADER */
   .app-header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 20px 0; position: sticky; top: 0; z-index: 50; }
@@ -230,19 +230,19 @@
 </head>
 <body>
 
-<!-- 멤버 선택 화면 -->
-<div id="member-select-screen">
-  <div style="text-align:center;margin-bottom:32px;">
+<!-- 멤버 선택 화면 (앱 전체 덮음) -->
+<div id="member-select-screen" style="position:fixed;inset:0;background:var(--bg);z-index:300;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;max-width:430px;margin:0 auto;left:50%;transform:translateX(-50%);width:100%;">
+  <div style="text-align:center;margin-bottom:36px;">
     <div class="ms-logo">GIT HEALTH<span class="ms-dot"></span></div>
-    <div class="ms-sub">나를 선택해주세요</div>
+    <div class="ms-sub">운동 인증 모임</div>
   </div>
-  <div class="ms-title" style="width:100%;max-width:380px;">멤버 선택</div>
-  <div class="ms-list" id="ms-list">
+  <div class="ms-title" style="width:100%;max-width:380px;">나를 선택해주세요</div>
+  <div class="ms-list" id="ms-list" style="width:100%;max-width:380px;display:flex;flex-direction:column;gap:10px;margin-top:12px;">
     <div class="ms-loading">불러오는 중...</div>
   </div>
 </div>
 
-<div class="shell">
+<div class="shell" id="main-shell">
   <div class="current-user-bar" id="current-user-bar" onclick="switchUser()" style="display:none;">
     <span id="current-user-avatar" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;"></span>
     <span id="current-user-name" style="font-weight:600;"></span>
@@ -445,6 +445,7 @@ function selectMember(id){
   currentMember = members.find(m=>m.id===id);
   if(!currentMember) return;
   document.getElementById('member-select-screen').style.display = 'none';
+  document.getElementById('main-shell').style.display = 'flex';
   const bar = document.getElementById('current-user-bar');
   bar.style.display = 'flex';
   const idx = members.findIndex(m=>m.id===id);
@@ -459,6 +460,7 @@ function selectMember(id){
 function switchUser(){
   currentMember = null;
   document.getElementById('member-select-screen').style.display = 'flex';
+  document.getElementById('main-shell').style.display = 'none';
   document.getElementById('current-user-bar').style.display = 'none';
 }
 
