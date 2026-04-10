@@ -513,14 +513,22 @@ async function handlePhoto(input){
 }
 
 /* ── 데이터 로드 ── */
+let allCerts = []; // 전체 멤버 인증 (현황 탭용)
+
 async function loadAll(){
   const { data: m } = await sb.from('members').select('*').order('created_at');
   members = m || [];
   const range = getThisWeekRange();
-  let certQuery = sb.from('certifications').select('*').gte('workout_date', range.start).lte('workout_date', range.end);
-  if(currentMember) certQuery = certQuery.eq('member_id', currentMember.id);
-  const { data: c } = await certQuery;
-  certs = c || [];
+  // 전체 인증 (현황 탭용)
+  const { data: ac } = await sb.from('certifications').select('*').gte('workout_date', range.start).lte('workout_date', range.end);
+  allCerts = ac || [];
+  // 본인 인증만 (인증 탭용)
+  if(currentMember){
+    const { data: c } = await sb.from('certifications').select('*').gte('workout_date', range.start).lte('workout_date', range.end).eq('member_id', currentMember.id);
+    certs = c || [];
+  } else {
+    certs = [];
+  }
   const { data: wh } = await sb.from('week_history').select('*').order('created_at', {ascending:false});
   weekHistory = wh || [];
   const { data: s } = await sb.from('settlements').select('*').order('settled_at', {ascending:false});
@@ -530,7 +538,7 @@ async function loadAll(){
 
 /* ── 현황 ── */
 function getMemberCertCount(memberId){
-  return certs.filter(c => c.member_id === memberId).length;
+  return allCerts.filter(c => c.member_id === memberId).length;
 }
 function getMemberStatus(m){
   if(m.status === 'sleep') return {label:'휴면', cls:'badge-sleep'};
@@ -586,22 +594,32 @@ function renderHome(){
 
 /* ── 인증 ── */
 function renderPreviewGrid(){
-  const myCerts = currentMember ? certs.filter(c => c.member_id === currentMember.id) : [];
+  const myCerts = certs; // already filtered by member in loadAll
   if(!myCerts.length){
-    document.getElementById('preview-grid').innerHTML = '<div class="thumb">+</div>';
+    document.getElementById('preview-grid').innerHTML = '<div class="thumb" style="font-size:22px;color:var(--light);">+</div>';
     return;
   }
   const html = myCerts.map(c=>{
     const d = new Date(c.workout_date);
     const lbl = `${d.getMonth()+1}/${d.getDate()} (${DAYS[d.getDay()]})`;
-    if(c.photo_url){
-      return `<div class="thumb"><img src="${c.photo_url}" loading="lazy" /><div class="thumb-check">✓</div><div class="thumb-date">${lbl}</div></div>`;
-    }
-    const emojis=['🏃','💪','🏋️','🚴','🧘','🏊'];
-    const emoji = emojis[Math.abs(c.id.charCodeAt(0)) % emojis.length];
-    return `<div class="thumb"><div style="font-size:26px;">${emoji}</div><div class="thumb-check">✓</div><div class="thumb-date">${lbl}</div></div>`;
-  }).join('') + '<div class="thumb">+</div>';
+    const inner = c.photo_url
+      ? `<img src="${c.photo_url}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`
+      : `<div style="font-size:26px;">🏃</div>`;
+    return `<div class="thumb" style="position:relative;">
+      ${inner}
+      <div class="thumb-check">✓</div>
+      <div class="thumb-date">${lbl}</div>
+      <button onclick="deleteCert('${c.id}')" style="position:absolute;top:4px;left:4px;width:18px;height:18px;border-radius:50%;background:rgba(255,68,68,0.85);color:#fff;border:none;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;line-height:1;">×</button>
+    </div>`;
+  }).join('') + '<div class="thumb" style="font-size:22px;color:var(--light);">+</div>';
   document.getElementById('preview-grid').innerHTML = html;
+}
+
+async function deleteCert(id){
+  if(!confirm('이 인증 기록을 삭제할까요?')) return;
+  const { error } = await sb.from('certifications').delete().eq('id', id);
+  if(error){ alert('삭제 중 오류: ' + error.message); return; }
+  await loadAll();
 }
 
 function changeDur(d){
