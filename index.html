@@ -16,6 +16,22 @@
     --text: #111318; --muted: #6B7280; --light: #9CA3AF;
     --radius: 16px; --radius-sm: 10px;
   }
+
+  /* 멤버 선택 화면 */
+  .member-select-screen { position: fixed; inset: 0; background: var(--bg); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; }
+  .ms-logo { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 3px; margin-bottom: 8px; }
+  .ms-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); display: inline-block; margin-left: 4px; margin-bottom: 4px; }
+  .ms-sub { font-size: 14px; color: var(--muted); margin-bottom: 36px; }
+  .ms-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: var(--text); align-self: flex-start; }
+  .ms-list { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 10px; }
+  .ms-item { display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; cursor: pointer; transition: all .15s; }
+  .ms-item:hover { border-color: var(--green); background: var(--green-soft); }
+  .ms-item-name { font-size: 16px; font-weight: 600; color: var(--text); }
+  .ms-item-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ms-loading { font-size: 14px; color: var(--muted); margin-top: 20px; }
+  .ms-empty { font-size: 14px; color: var(--muted); margin-top: 20px; text-align: center; line-height: 1.7; }
+  .current-user-bar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--green-soft); border-bottom: 1px solid #B3EDD8; font-size: 13px; color: #00815A; cursor: pointer; }
+  .current-user-bar:hover { background: #d0f5e8; }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   .shell { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
@@ -212,7 +228,25 @@
 </style>
 </head>
 <body>
+
+<!-- 멤버 선택 화면 -->
+<div id="member-select-screen">
+  <div style="text-align:center;margin-bottom:32px;">
+    <div class="ms-logo">GIT HEALTH<span class="ms-dot"></span></div>
+    <div class="ms-sub">나를 선택해주세요</div>
+  </div>
+  <div class="ms-title" style="width:100%;max-width:380px;">멤버 선택</div>
+  <div class="ms-list" id="ms-list">
+    <div class="ms-loading">불러오는 중...</div>
+  </div>
+</div>
+
 <div class="shell">
+  <div class="current-user-bar" id="current-user-bar" onclick="switchUser()" style="display:none;">
+    <span id="current-user-avatar" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;"></span>
+    <span id="current-user-name" style="font-weight:600;"></span>
+    <span style="margin-left:auto;font-size:11px;opacity:.7;">변경 →</span>
+  </div>
   <div class="app-header">
     <div class="app-logo">
       <span class="logo-text">GIT HEALTH</span>
@@ -383,6 +417,49 @@ const DAYS = ['일','월','화','수','목','금','토'];
 
 let members = [], certs = [], weekHistory = [], settlements = [];
 let expandedPm = null, compressedPhoto = null, photoUploaded = false;
+let currentMember = null;
+
+/* ── 멤버 선택 화면 ── */
+async function initMemberSelect(){
+  const { data: m } = await sb.from('members').select('*').order('created_at');
+  members = m || [];
+  const list = document.getElementById('ms-list');
+  if(!members.length){
+    list.innerHTML = '<div class="ms-empty">아직 멤버가 없어요.<br>관리자가 먼저 멤버를 추가해야 해요.</div>';
+    return;
+  }
+  list.innerHTML = members.map((m,i)=>{
+    const c = getColor(i);
+    return `<div class="ms-item" onclick="selectMember('${m.id}')">
+      <div class="avatar" style="background:${c.bg};color:${c.fg};width:44px;height:44px;font-size:16px;flex-shrink:0;">${getInit(m.name)}</div>
+      <div>
+        <div class="ms-item-name">${m.name}</div>
+        <div class="ms-item-sub">${m.status==='sleep'?'휴면 계정':'활성'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectMember(id){
+  currentMember = members.find(m=>m.id===id);
+  if(!currentMember) return;
+  document.getElementById('member-select-screen').style.display = 'none';
+  const bar = document.getElementById('current-user-bar');
+  bar.style.display = 'flex';
+  const idx = members.findIndex(m=>m.id===id);
+  const c = getColor(idx);
+  const av = document.getElementById('current-user-avatar');
+  av.style.background = c.bg; av.style.color = c.fg;
+  av.textContent = getInit(currentMember.name);
+  document.getElementById('current-user-name').textContent = currentMember.name + '으로 로그인 중';
+  loadAll();
+}
+
+function switchUser(){
+  currentMember = null;
+  document.getElementById('member-select-screen').style.display = 'flex';
+  document.getElementById('current-user-bar').style.display = 'none';
+}
 
 function getColor(i){ return COLORS[i % COLORS.length]; }
 function getInit(n){ return n.charAt(0); }
@@ -500,7 +577,7 @@ function renderHome(){
   }).join('');
 
   // 인증 탭 공지
-  const myCount = members.length > 0 ? getMemberCertCount(members[0].id) : 0;
+  const myCount = currentMember ? getMemberCertCount(currentMember.id) : 0;
   const remaining = Math.max(0, 3 - myCount);
   document.getElementById('upload-notice').textContent = remaining === 0 ? '이번 주 3회 달성했어요! 🎉' : `이번 주 ${myCount}회 완료 — ${remaining}회 더 필요해요`;
 }
@@ -560,7 +637,7 @@ async function submitCert(){
 
   const wl = getWeekLabel();
   const { error } = await sb.from('certifications').insert({
-    member_id: members[0]?.id || null,
+    member_id: currentMember?.id || null,
     workout_date: dateStr,
     duration_minutes: dur,
     photo_url: photoUrl,
@@ -578,6 +655,24 @@ async function submitCert(){
   btn.textContent = '인증 올리기';
 
   await loadAll();
+
+  // 폼 초기화
+  const todayD2 = new Date();
+  document.getElementById('workout-date').value = `${todayD2.getFullYear()}-${String(todayD2.getMonth()+1).padStart(2,'0')}-${String(todayD2.getDate()).padStart(2,'0')}`;
+  document.getElementById('duration-val').value = '40';
+  document.getElementById('admin-pw-input') && null;
+  compressedPhoto = null;
+  photoUploaded = false;
+  const zone = document.getElementById('upload-zone');
+  zone.classList.remove('has-file');
+  const prev = document.getElementById('upload-preview');
+  prev.classList.remove('show');
+  prev.src = '';
+  document.getElementById('uz-icon').style.display = '';
+  document.getElementById('uz-title').textContent = '사진 업로드';
+  document.getElementById('uz-sub').textContent = '운동 인증 사진을 추가하세요';
+  document.getElementById('photo-input').value = '';
+  checkForm();
 }
 
 /* ── 집계 ── */
@@ -756,7 +851,7 @@ function showTab(name){
 const todayD = new Date();
 document.getElementById('workout-date').value = `${todayD.getFullYear()}-${String(todayD.getMonth()+1).padStart(2,'0')}-${String(todayD.getDate()).padStart(2,'0')}`;
 checkForm();
-loadAll();
+initMemberSelect();
 </script>
 </body>
 </html>
