@@ -584,11 +584,12 @@ function renderHome(){
 
 /* ── 인증 ── */
 function renderPreviewGrid(){
-  if(!certs.length){
+  const myCerts = currentMember ? certs.filter(c => c.member_id === currentMember.id) : [];
+  if(!myCerts.length){
     document.getElementById('preview-grid').innerHTML = '<div class="thumb">+</div>';
     return;
   }
-  const html = certs.map(c=>{
+  const html = myCerts.map(c=>{
     const d = new Date(c.workout_date);
     const lbl = `${d.getMonth()+1}/${d.getDate()} (${DAYS[d.getDay()]})`;
     if(c.photo_url){
