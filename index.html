@@ -517,7 +517,9 @@ async function loadAll(){
   const { data: m } = await sb.from('members').select('*').order('created_at');
   members = m || [];
   const range = getThisWeekRange();
-  const { data: c } = await sb.from('certifications').select('*').gte('workout_date', range.start).lte('workout_date', range.end);
+  let certQuery = sb.from('certifications').select('*').gte('workout_date', range.start).lte('workout_date', range.end);
+  if(currentMember) certQuery = certQuery.eq('member_id', currentMember.id);
+  const { data: c } = await certQuery;
   certs = c || [];
   const { data: wh } = await sb.from('week_history').select('*').order('created_at', {ascending:false});
   weekHistory = wh || [];
